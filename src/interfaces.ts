@@ -13,3 +13,7 @@ export interface ILeg {
     end: IPoint;
     mid: IPoint;
 }
+
+export enum BodyState {
+    Still = 0
+}

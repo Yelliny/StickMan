@@ -2,13 +2,10 @@ import * as React from 'react';
 import './App.css';
 
 import logo from './logo.svg';
-import {IHand, ILeg, IPoint} from "./interfaces";
+import {BodyState, IHand, ILeg, IPoint} from "./interfaces";
 
 export interface IStickManState {
-    leftHandCord: IHand;
-    rightHandCord: IHand;
-    leftLegCord: ILeg;
-    rightLegCord: ILeg;
+    bodyState: BodyState;
     basePoint: IPoint;
 }
 
@@ -16,32 +13,18 @@ class App extends React.Component<{}, IStickManState> {
 
     private canvas: any;
 
+    private static readonly HAND_LENGTH = 90;
+
     constructor(p: any) {
         super(p);
 
         let basePoint: IPoint = { x: 150, y: 150 };
         this.state = {
-            leftHandCord: {
-                mid: { x: -30, y: 0 },
-                end: { x: -50, y: 0 }
-            },
-            rightHandCord: {
-                mid: {x: 30, y: 0},
-                end: {x: 40, y: 0}
-            },
-            leftLegCord: {
-                mid: { x: -30, y: 100 },
-                end: { x: -50, y: 140 }
-            },
-            rightLegCord: {
-                mid: {x: 30, y: 100},
-                end: {x: 40, y: 140}
-            },
+            bodyState: BodyState.Still,
             basePoint
 
         };
 
-        this.handsUp = this.handsUp.bind(this);
         this.draw = this.draw.bind(this);
         this.drawStillBody = this.drawStillBody.bind(this);
         this.keydown = this.keydown.bind(this);
@@ -53,10 +36,14 @@ class App extends React.Component<{}, IStickManState> {
         window.requestAnimationFrame(this.draw);
     }
 
-    private draw(time: any) {
+    private draw(time) {
         const ctx = this.canvas.getContext("2d");
         ctx.clearRect(0, 0, 300, 300);
-        this.drawStillBody(ctx);
+        switch (this.state.bodyState) {
+            case BodyState.Still:
+                this.drawStillBody(ctx);
+                break;
+        }
 
         window.requestAnimationFrame(this.draw);
     }
@@ -79,19 +66,60 @@ class App extends React.Component<{}, IStickManState> {
 
         let drawHandsFrom: IPoint = { x: this.state.basePoint.x, y: this.state.basePoint.y - 40 };
         let drawLegsFrom: IPoint = { x: this.state.basePoint.x, y: this.state.basePoint.y + 50 };
-        this.drawHand(this.state.basePoint, drawHandsFrom, ctx, this.state.rightHandCord);
-        this.drawHand(this.state.basePoint, drawHandsFrom, ctx, this.state.leftHandCord);
-        this.drawHand(this.state.basePoint, drawLegsFrom, ctx, this.state.rightLegCord);
-        this.drawHand(this.state.basePoint, drawLegsFrom, ctx, this.state.leftLegCord);
+        let rightHandEnd: IPoint = {x: drawHandsFrom.x + 40, y: drawHandsFrom.y + 73};
+        let leftHandEnd: IPoint = {x: drawHandsFrom.x - 40, y: drawHandsFrom.y + 73};
+        let rightLegEnd: IPoint = {x: drawLegsFrom.x + 40, y: drawLegsFrom.y + 73};
+        let leftLegEnd: IPoint = {x: drawLegsFrom.x - 40, y: drawLegsFrom.y + 73};
+        this.drawHand(this.state.basePoint, drawHandsFrom, ctx, rightHandEnd);
+        this.drawHand(this.state.basePoint, drawHandsFrom, ctx, leftHandEnd);
+        this.drawHand(this.state.basePoint, drawLegsFrom, ctx, rightLegEnd);
+        this.drawHand(this.state.basePoint, drawLegsFrom, ctx, leftLegEnd);
     }
 
-    private drawHand(basePoint: IPoint, drawFrom: IPoint, ctx: any, handState: IHand) {
+    private drawHand(basePoint: IPoint, drawFrom: IPoint, ctx: any, endPoint: IPoint) {
         ctx.beginPath();
         ctx.moveTo(drawFrom.x, drawFrom.y);
-        ctx.lineTo(handState.mid.x + basePoint.x, handState.mid.y + basePoint.y);
-        ctx.lineTo(handState.end.x + basePoint.x, handState.end.y + basePoint.y);
+        let handStartEndDist = this.calcDist(drawFrom, endPoint);
+        if (handStartEndDist > App.HAND_LENGTH) {
+            console.error("DRAW HAND: hand length too big");
+            return;
+        }
+        let midPoint: IPoint = { x: (drawFrom.x + endPoint.x) / 2, y: (drawFrom.y + endPoint.y) / 2 };
+        let m = (drawFrom.y - endPoint.y) / (drawFrom.x - endPoint.x);
+        let mOposite = - (1/m);
+        // console.log("draw from", drawFrom, "draw to", endPoint, "mid point", midPoint ,"M:", mOposite);
+        let elbowPos: IPoint = this.findElbowPos(mOposite, midPoint, drawFrom, endPoint);
+        // console.log(elbowPos);
+        ctx.lineTo(elbowPos.x, elbowPos.y);
+        ctx.lineTo(endPoint.x, endPoint.y);
         ctx.stroke();
         ctx.closePath();
+    }
+
+    private findElbowPos(m, midPoint: IPoint, startPoint: IPoint, endPoint: IPoint): IPoint {
+        if (midPoint.y > startPoint.y) {
+            for (let y = midPoint.y; y > 0; y--) {
+                let x = (y - midPoint.y + m * midPoint.x) / m;
+                let startToElbow = this.calcDist(startPoint, {x, y});
+                let elbowToEnd = this.calcDist({x, y}, endPoint);
+                if (Math.abs(startToElbow + elbowToEnd - App.HAND_LENGTH) < 5)
+                    return {x, y};
+            }
+        } else {
+            for (let y = midPoint.y; y < 300; y++) {
+                let x = (y - midPoint.y + m * midPoint.x) / m;
+                let startToElbow = this.calcDist(startPoint, {x, y});
+                let elbowToEnd = this.calcDist({x, y}, endPoint);
+                if (Math.abs(startToElbow + elbowToEnd - App.HAND_LENGTH) < 5)
+                    return {x, y};
+            }
+        }
+        console.error("Elbow pos not found");
+        return { x: -1, y: -1 };
+    }
+
+    private calcDist(start: IPoint, end: IPoint) {
+        return Math.sqrt(Math.pow(start.x - end.x, 2) + Math.pow(start.y - end.y, 2));
     }
 
     private keydown(e: any) {
@@ -109,18 +137,6 @@ class App extends React.Component<{}, IStickManState> {
         }
     }
 
-    private handsUp() {
-        this.setState({
-            leftHandCord: {
-                ...this.state.leftHandCord,
-                end: {x: 115, y: 85}
-            },
-            rightHandCord: {
-                ...this.state.rightHandCord,
-                end: {x: 185, y: 85}
-            }
-        });
-    }
 
   public render() {
     return (
