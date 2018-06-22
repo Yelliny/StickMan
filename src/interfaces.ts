@@ -15,5 +15,18 @@ export interface ILeg {
 }
 
 export enum BodyState {
-    Still = 0
+    Still,
+    WalkRight,
+    WalkLeft,
+    KneeKick
+}
+
+export interface HandDrawDetails {
+    from: IPoint;
+    to: IPoint;
+}
+
+export interface LegDrawDetails {
+    from: IPoint;
+    to: IPoint;
 }
