@@ -17,6 +17,7 @@ export interface IStickManState {
 class App extends React.Component<{}, IStickManState> {
 
     private canvas: any;
+    private ehh: HTMLAudioElement;
 
     private static readonly HAND_LENGTH = 90;
     private static readonly LEG_LENGTH = 105;
@@ -30,6 +31,9 @@ class App extends React.Component<{}, IStickManState> {
 
     constructor(p: any) {
         super(p);
+
+        this.ehh = new Audio("https://s1.vocaroo.com/media/download_temp/Vocaroo_s1ql5yxbDLjI.mp3");
+        this.ehh.load();
 
         let basePoint: IPoint = {x: 150, y: 150};
         let handsFrom = {x: basePoint.x, y: basePoint.y - 40};
@@ -222,6 +226,7 @@ class App extends React.Component<{}, IStickManState> {
             this.drawHand(this.state.basePoint, this.state.leftHand.from, ctx, this.state.leftHand.to, App.HAND_LENGTH, true);
             this.drawHand(this.state.basePoint, this.state.rightLeg.from, ctx, this.state.rightLeg.to, App.LEG_LENGTH, true);
             this.drawHand(this.state.basePoint, this.state.leftLeg.from, ctx, this.state.leftLeg.to, App.LEG_LENGTH, false);
+            this.ehh.play();
         });
 
     }
@@ -348,8 +353,7 @@ class App extends React.Component<{}, IStickManState> {
     public render() {
         return (
             <div className="App">
-                <audio ref="audio_tag" src="./2locos.mp3" controls autoPlay/>
-
+                {/*<audio ref="audio_tag" src="https://s1.vocaroo.com/media/download_temp/Vocaroo_s1ql5yxbDLjI.mp3"/>*/}
                 <header className="App-header">
                     <img src={logo} className="App-logo" alt="logo"/>
                     <h1 className="App-title">Welcome to React</h1>
