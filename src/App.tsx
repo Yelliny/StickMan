@@ -226,29 +226,6 @@ class App extends React.Component<{}, IStickManState> {
 
     }
 
-    /*   // knee attack
-       let legUp = 0;
-       if (this.state.bodyState === BodyState.KneeKick) {
-       let upOffset = App.KNEE_HEIGHT * this.state.actionTimer / App.STEP_PERIOD_LEG_UP;
-       let downOffset = App.KNEE_HEIGHT - (App.KNEE_HEIGHT * (this.state.actionTimer - App.STEP_PERIOD_LEG_UP) / App.STEP_PERIOD_LEG_DOWN);
-       legUp = this.state.actionTimer <= App.STEP_PERIOD_LEG_UP ?
-           upOffset : downOffset;
-
-       this.setState({
-                         rightLeg: {
-                             ...this.state.rightLeg,
-       to: {...this.state.rightLeg.to, y: this.state.rightLeg.to.y - legUp}
-   },
-   actionTimer: (this.state.actionTimer + 1) % App.KNEE_KICK_PERIOD,
-   }, () => {
-       this.drawConstants(ctx);
-       this.drawHand(this.state.basePoint, this.state.rightHand.from, ctx, this.state.rightHand.to, App.HAND_LENGTH, true);
-       this.drawHand(this.state.basePoint, this.state.leftHand.from, ctx, this.state.leftHand.to, App.HAND_LENGTH, true);
-       this.drawHand(this.state.basePoint, this.state.rightLeg.from, ctx, this.state.rightLeg.to, App.LEG_LENGTH, false);
-       this.drawHand(this.state.basePoint, this.state.leftLeg.from, ctx, this.state.leftLeg.to, App.LEG_LENGTH, false);
-   });
-   }*/
-
     private drawConstants(ctx) {
         ctx.beginPath();
         ctx.arc(this.state.basePoint.x, 80, 20, 0, 2 * Math.PI);
@@ -371,6 +348,8 @@ class App extends React.Component<{}, IStickManState> {
     public render() {
         return (
             <div className="App">
+                <audio ref="audio_tag" src="./2locos.mp3" controls autoPlay/>
+
                 <header className="App-header">
                     <img src={logo} className="App-logo" alt="logo"/>
                     <h1 className="App-title">Welcome to React</h1>
