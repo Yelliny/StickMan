@@ -11,7 +11,10 @@ export interface IStickManState {
     leftHand: HandDrawDetails;
     leftLeg: LegDrawDetails;
     rightLeg: LegDrawDetails;
+    walkingTimer: number;
     actionTimer: number;
+    stop: boolean;
+    lastBodyState: BodyState;
 }
 
 class App extends React.Component<{}, IStickManState> {
@@ -21,8 +24,8 @@ class App extends React.Component<{}, IStickManState> {
 
     private static readonly HAND_LENGTH = 90;
     private static readonly LEG_LENGTH = 105;
-    private static readonly STEP_PERIOD_LEG_UP = 30;
-    private static readonly STEP_PERIOD_LEG_DOWN = 30;
+    private static readonly STEP_PERIOD_LEG_UP = 13;
+    private static readonly STEP_PERIOD_LEG_DOWN = 13;
     private static readonly KNEE_KICK_PERIOD = App.STEP_PERIOD_LEG_DOWN + App.STEP_PERIOD_LEG_UP;
     private static readonly KNEE_HEIGHT = 35;
     private static readonly STEP_LEG_DIST = 80;
@@ -40,7 +43,9 @@ class App extends React.Component<{}, IStickManState> {
         let drawLegsFrom = {x: basePoint.x, y: basePoint.y + 50};
         this.state = {
             bodyState: BodyState.Still,
+            lastBodyState: BodyState.Still,
             basePoint,
+            stop: true,
             rightHand: {
                 from: handsFrom,
                 to: {x: handsFrom.x + 40, y: handsFrom.y + 73}
@@ -57,6 +62,7 @@ class App extends React.Component<{}, IStickManState> {
                 from: drawLegsFrom,
                 to: {x: drawLegsFrom.x - 40, y: drawLegsFrom.y + 94}
             },
+            walkingTimer: 0,
             actionTimer: 0
 
         };
@@ -84,10 +90,10 @@ class App extends React.Component<{}, IStickManState> {
                 this.drawStillBody(ctx);
                 break;
             case BodyState.WalkRight:
-                this.drawWalkingBody(ctx);
+                this.drawWalkingBody(ctx, true);
                 break;
             case BodyState.WalkLeft:
-                this.drawWalkingBody(ctx);
+                this.drawWalkingBody(ctx, false);
                 break;
             case BodyState.KneeKick:
                 this.drawKneeKick(ctx);
@@ -107,41 +113,56 @@ class App extends React.Component<{}, IStickManState> {
         switch (e.key) {
             case "ArrowRight":
                 this.setState({
+                    walkingTimer: 0,
+                    actionTimer: 0,
+                    stop: true
+                });
+                break;
+            case "ArrowUp":
+                this.setState({
                     bodyState: BodyState.Still,
-                    actionTimer: 0
+                    walkingTimer: 0,
+                    actionTimer: 0,
                 });
                 break;
             case "ArrowLeft":
                 this.setState({
-                    bodyState: BodyState.Still,
-                    actionTimer: 0
+                    walkingTimer: 0,
+                    actionTimer: 0,
+                    stop: true
                 });
                 break;
             case "a":
                 this.setState({
-                    bodyState: BodyState.Still,
-                    actionTimer: 0
+                    bodyState: this.state.lastBodyState,
+                    walkingTimer: 0,
+                    actionTimer: 0,
                 });
                 break;
         }
     }
 
-    private drawWalkingBody(ctx: any) {
+    private drawWalkingBody(ctx: any, right: boolean) {
         // calc legs offset from still body state
+        let shouldWalk = this.state.actionTimer > 15 && !this.state.stop;
         let baseOffSet = this.state.bodyState === BodyState.WalkRight ? 2 : -2;
-        let upOffset = App.STEP_LEG_DIST * this.state.actionTimer / App.STEP_PERIOD;
+        let upOffset = App.STEP_LEG_DIST * this.state.walkingTimer / App.STEP_PERIOD;
         let newBasePoint = {x: this.state.basePoint.x + baseOffSet, y: this.state.basePoint.y};
-        let handsFrom = {x: newBasePoint.x, y: newBasePoint.y - 40};
-        let drawLegsFrom = {x: newBasePoint.x, y: newBasePoint.y + 50};
-        this.setState({
+        let handsFrom = shouldWalk ? {x: newBasePoint.x, y: newBasePoint.y - 40} :
+            { x: this.state.basePoint.x, y: this.state.basePoint.y -40 };
+        let drawLegsFrom = shouldWalk ? {x: newBasePoint.x, y: newBasePoint.y + 50} :
+            { x: this.state.basePoint.x, y: this.state.basePoint.y + 50 };
+        let rightHandOffset = right ? 50 : -50;
+        let leftHandOffset = right ? 25 : -25;
+        this.setState(shouldWalk ? {
             basePoint: newBasePoint,
             rightHand: {
                 from: handsFrom,
-                to: {x: handsFrom.x + 40, y: handsFrom.y + 73}
+                to: {x: handsFrom.x + rightHandOffset, y: handsFrom.y - 5 }
             },
             leftHand: {
                 from: handsFrom,
-                to: {x: handsFrom.x - 40, y: handsFrom.y + 73}
+                to: {x: handsFrom.x + leftHandOffset, y: handsFrom.y - 10 }
             },
             rightLeg: {
                 from: drawLegsFrom,
@@ -151,7 +172,20 @@ class App extends React.Component<{}, IStickManState> {
                 from: drawLegsFrom,
                 to: {x: drawLegsFrom.x - 40 + upOffset, y: drawLegsFrom.y + 94}
             },
-            actionTimer: (this.state.actionTimer + 1) % App.STEP_PERIOD
+            walkingTimer: (this.state.walkingTimer + 1) % App.STEP_PERIOD,
+            actionTimer: this.state.actionTimer + 1
+        } : {
+            ...this.state,
+            actionTimer: this.state.actionTimer + 1,
+            walkingTimer: (this.state.walkingTimer + 1) % App.STEP_PERIOD,
+            rightHand: {
+                from: handsFrom,
+                to: {x: handsFrom.x + rightHandOffset, y: handsFrom.y - 5 }
+            },
+            leftHand: {
+                from: handsFrom,
+                to: {x: handsFrom.x + leftHandOffset, y: handsFrom.y - 10 }
+            }
         }, () => {
             this.drawConstants(ctx);
             this.drawHand(this.state.basePoint, this.state.rightHand.from, ctx, this.state.rightHand.to, App.HAND_LENGTH, true);
@@ -183,7 +217,7 @@ class App extends React.Component<{}, IStickManState> {
                 from: drawLegsFrom,
                 to: {x: drawLegsFrom.x - 40, y: drawLegsFrom.y + 94}
             },
-            actionTimer: 0
+            walkingTimer: 0
         }, () => {
             this.drawConstants(ctx);
             this.drawHand(this.state.basePoint, this.state.rightHand.from, ctx, this.state.rightHand.to, App.HAND_LENGTH, true);
@@ -198,35 +232,37 @@ class App extends React.Component<{}, IStickManState> {
         let handsFrom = {x: this.state.basePoint.x, y: this.state.basePoint.y - 40};
         let drawLegsFrom = {x: this.state.basePoint.x, y: this.state.basePoint.y + 50};
 
-        let upOffset = App.KNEE_HEIGHT * this.state.actionTimer / App.STEP_PERIOD_LEG_UP;
-        let downOffset = App.KNEE_HEIGHT - (App.KNEE_HEIGHT * (this.state.actionTimer - App.STEP_PERIOD_LEG_UP) / App.STEP_PERIOD_LEG_DOWN);
-        let legUp = this.state.actionTimer <= App.STEP_PERIOD_LEG_UP ?
+        let upOffset = App.KNEE_HEIGHT * this.state.walkingTimer / App.STEP_PERIOD_LEG_UP;
+        let downOffset = App.KNEE_HEIGHT - (App.KNEE_HEIGHT * (this.state.walkingTimer - App.STEP_PERIOD_LEG_UP) / App.STEP_PERIOD_LEG_DOWN);
+        let legUp = this.state.walkingTimer <= App.STEP_PERIOD_LEG_UP ?
             upOffset : downOffset;
+        let direction = this.state.lastBodyState === BodyState.WalkRight ? 1 : -1;
         this.setState({
-            rightHand: {
+            /*rightHand: {
                 from: handsFrom,
                 to: {x: handsFrom.x + 40, y: handsFrom.y + 73}
             },
             leftHand: {
                 from: handsFrom,
                 to: {x: handsFrom.x - 40, y: handsFrom.y + 73}
-            },
+            },*/
             rightLeg: {
                 from: drawLegsFrom,
-                to: {x: drawLegsFrom.x + 40, y: drawLegsFrom.y + 94 - legUp}
+                to: {x: drawLegsFrom.x + direction * 40, y: drawLegsFrom.y + 94 - legUp}
             },
             leftLeg: {
                 from: drawLegsFrom,
-                to: {x: drawLegsFrom.x - 40, y: drawLegsFrom.y + 94}
+                to: {x: drawLegsFrom.x - direction * 40, y: drawLegsFrom.y + 94}
             },
-            actionTimer: (this.state.actionTimer + 1) % App.KNEE_KICK_PERIOD,
+            walkingTimer: (this.state.walkingTimer + 1) % App.KNEE_KICK_PERIOD,
+            actionTimer: this.state.actionTimer + 1
         }, () => {
+            this.ehh.play();
             this.drawConstants(ctx);
             this.drawHand(this.state.basePoint, this.state.rightHand.from, ctx, this.state.rightHand.to, App.HAND_LENGTH, true);
             this.drawHand(this.state.basePoint, this.state.leftHand.from, ctx, this.state.leftHand.to, App.HAND_LENGTH, true);
             this.drawHand(this.state.basePoint, this.state.rightLeg.from, ctx, this.state.rightLeg.to, App.LEG_LENGTH, true);
             this.drawHand(this.state.basePoint, this.state.leftLeg.from, ctx, this.state.leftLeg.to, App.LEG_LENGTH, false);
-            this.ehh.play();
         });
 
     }
@@ -332,17 +368,30 @@ class App extends React.Component<{}, IStickManState> {
         switch (e.key) {
             case "ArrowLeft":
                 this.setState({
-                    bodyState: BodyState.WalkLeft
+                    bodyState: BodyState.WalkLeft,
+                    lastBodyState: this.state.bodyState !== BodyState.WalkLeft ?
+                        this.state.bodyState : this.state.lastBodyState,
+                    stop: false
+                });
+                break;
+            case "ArrowUp":
+                this.setState({
+                    bodyState: BodyState.Still
                 });
                 break;
             case "ArrowRight":
                 this.setState({
                     bodyState: BodyState.WalkRight,
+                    lastBodyState: this.state.bodyState !== BodyState.WalkRight ?
+                        this.state.bodyState : this.state.lastBodyState,
+                    stop: false
                 });
                 break;
             case "a":
                 this.setState({
                     bodyState: BodyState.KneeKick,
+                    lastBodyState: this.state.bodyState !== BodyState.KneeKick ?
+                        this.state.bodyState : this.state.lastBodyState,
                     basePoint: {x: this.state.basePoint.x, y: this.state.basePoint.y}
                 });
                 break;
